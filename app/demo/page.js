@@ -1,5 +1,5 @@
 import PageHero from '@/components/PageHero';
-import LeadForm from '@/components/LeadForm';
+import DemoAccess from '@/components/DemoAccess';
 import Icon from '@/components/Icons';
 import { site, whatsappLink } from '@/lib/site';
 
@@ -9,10 +9,10 @@ export const metadata = {
 };
 
 const agenda = [
-  ['Fill in the form', 'Tell us who you are and how you sell. It takes under a minute.'],
-  [`Explore ${site.demoName}`, 'Search real routes and see the customer booking journey on a live site.'],
-  ['See the back office', 'We follow up to walk you through the agent portal, pricing rules and the ledger.'],
-  ['Get your launch plan', 'A dated plan for your suppliers, branding and agents.'],
+  ['Enter your details', 'Tell us about you and your business. It takes under a minute.'],
+  ['Get your logins', `We create your ${site.demoName} account and show your logins on screen. A copy arrives by email.`],
+  ['Start exploring', 'Sign in, search real routes and try the booking journey. Payments use test connections.'],
+  ['See the back office', 'We follow up to walk you through the agent portal, admin panel and pricing rules.'],
 ];
 
 export default function DemoPage() {
@@ -21,9 +21,9 @@ export default function DemoPage() {
     <>
       <PageHero
         label="Live demo"
-        line="See SkyTravex"
-        accent="running a real booking site."
-        text={`After the form, you go straight to ${site.demoName}, a live customer booking site built on the SkyTravex engine.`}
+        line="Your own demo account,"
+        accent="ready in a minute."
+        text={`Fill in the form and we create your account on ${site.demoName}, a live booking site running on SkyTravex. No meeting required.`}
       />
 
       <section className="section demo-section" aria-label="Demo request">
@@ -61,7 +61,7 @@ export default function DemoPage() {
             ) : null}
           </aside>
           <div className="demo-form-card" data-reveal="right">
-            <LeadForm mode="demo" />
+            <DemoAccess />
           </div>
         </div>
       </section>

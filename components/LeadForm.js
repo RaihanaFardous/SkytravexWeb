@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Icon from './Icons';
 import { site, whatsappLink } from '@/lib/site';
 import { solutions } from '@/lib/solutions';
@@ -8,7 +9,7 @@ import { solutions } from '@/lib/solutions';
 // Emails each request to site.leadsEmail through FormSubmit (formsubmit.co).
 // The very first submission sends an activation email to that inbox; click
 // the link in it once and every later request is delivered.
-const ENDPOINT = `https://formsubmit.co/ajax/${site.leadsEmail}`;
+const ENDPOINT = `https://formsubmit.co/ajax/${site.formsubmitId || site.leadsEmail}`;
 
 const sizes = ['1 to 5 staff', '6 to 20 staff', '21 to 50 staff', 'More than 50 staff'];
 const businessTypes = [...solutions.map((s) => s.name), 'Other'];
@@ -33,7 +34,7 @@ const copy = {
   },
 };
 
-const launchSteps = ['Saving your details', 'Loading sample routes and fares', `Opening ${site.demoName}`];
+const launchSteps = ['Preparing your demo', 'Loading sample routes and fares', `Opening ${site.demoName}`];
 const LAUNCH_MS = 1300;
 
 function Launch({ name }) {
@@ -52,9 +53,19 @@ function Launch({ name }) {
     };
   }, []);
 
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, []);
+
   const progress = Math.round(Math.min(100, (step / launchSteps.length) * 100));
 
-  return (
+  // Rendered on <body> so it sits above the header, footer and every section.
+  return createPortal(
+    <div className="launch-overlay" role="dialog" aria-modal="true" aria-label="Preparing your demo">
     <div className="launch" role="status" aria-live="polite">
       <div className="launch-sky" aria-hidden="true">
         <span className="launch-runway" />
@@ -86,6 +97,8 @@ function Launch({ name }) {
         Continue to {site.demoName} now
       </a>
     </div>
+    </div>,
+    document.body
   );
 }
 
@@ -122,7 +135,7 @@ export default function LeadForm({ mode = 'demo' }) {
     setErrors(next);
     if (Object.keys(next).length) return;
 
-    setStatus('sending');
+    setStatus(mode === 'demo' ? 'launching' : 'sending');
     const payload = {
       _subject: `${text.subject}: ${values.company}`,
       _template: 'table',
@@ -139,21 +152,39 @@ export default function LeadForm({ mode = 'demo' }) {
       'Sent from': window.location.href,
     };
 
-    try {
-      const response = await fetch(ENDPOINT, {
+    const send = () =>
+      fetch(ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify(payload),
+        keepalive: true,
+      }).then(async (response) => {
+        const data = await response.json().catch(() => ({}));
+        // Until the inbox owner clicks FormSubmit's activation link, it answers
+        // "This form needs Activation". That is not the visitor's fault, so it
+        // must never block them.
+        const pendingActivation = /activat/i.test(String(data.message || ''));
+        if (!response.ok || ((data.success === 'false' || data.success === false) && !pendingActivation)) {
+          throw new Error(data.message || 'failed');
+        }
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || data.success === 'false' || data.success === false) throw new Error(data.message || 'failed');
+
+    if (mode === 'demo') {
+      // The demo never waits on email: the launch window opens at once and the
+      // details are sent in the background.
+      send().catch(() => {});
+      return;
+    }
+
+    try {
+      await send();
       setStatus('sent');
     } catch (error) {
       setStatus('failed');
     }
   };
 
-  if (status === 'sent' && mode === 'demo') return <Launch name={values.name} />;
+  if (status === 'launching') return <Launch name={values.name} />;
 
   if (status === 'sent') {
     return (
